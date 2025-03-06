@@ -52,6 +52,7 @@ def upload_file():
         return redirect(request.url)
     if file and allowed_file(file.filename):
         filename = file.filename
+        userAgent = request.headers.get('User-Agent')
         if malware_scan(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             flash(f'Archivo {filename} subido exitosamente', 'success')
