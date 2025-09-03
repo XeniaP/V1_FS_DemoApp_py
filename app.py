@@ -36,6 +36,8 @@ def malware_scan(file):
         amaas.grpc.quit(handle)
         if json.loads(result)["scanResult"] == 1:
             return False
+        else:
+            SANDOBOX_CALLING
         return True
     except Exception as e:
         print(e)
