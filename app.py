@@ -37,7 +37,7 @@ def malware_scan(file):
         if json.loads(result)["scanResult"] == 1:
             return False
         else:
-            SANDOBOX_CALLING
+            print("SANDOBOX_CALLING")
         return True
     except Exception as e:
         print(e)
