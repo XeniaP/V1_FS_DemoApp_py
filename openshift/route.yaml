@@ -1,0 +1,28 @@
+# OpenShift Route — exposes the service externally via the OpenShift Router (HAProxy).
+# Use this instead of (or alongside) the ALB Ingress when deploying on ROSA or OCP.
+#
+# For HTTPS with a custom cert, replace tls.termination: edge with passthrough
+# and provide your certificate data, or let OpenShift auto-provision via cert-manager.
+#
+# After apply, get the URL:
+#   oc get route fs-demoapp -n fs-demoapp
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: fs-demoapp
+  namespace: fs-demoapp
+  labels:
+    app.kubernetes.io/name: fs-demoapp
+spec:
+  # Optionally pin to a specific hostname:
+  # host: demoapp.apps.YOUR_CLUSTER_DOMAIN
+  to:
+    kind: Service
+    name: fs-demoapp
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

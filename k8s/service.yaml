@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fs-demoapp
+  namespace: fs-demoapp
+  labels:
+    app.kubernetes.io/name: fs-demoapp
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: fs-demoapp
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fs-demoapp-config
+  namespace: fs-demoapp
+  labels:
+    app.kubernetes.io/name: fs-demoapp
+data:
+  V1_REGION: "us-east-1"
+  UPLOAD_FOLDER: "/app/uploads"
+  PORT: "8080"

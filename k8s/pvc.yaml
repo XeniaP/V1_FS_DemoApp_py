@@ -1,0 +1,33 @@
+# PersistentVolumeClaim for uploaded files.
+# Uses ReadWriteMany (EFS) to support multiple replicas across nodes.
+#
+# Prerequisites on EKS:
+#   1. Install the AWS EFS CSI Driver:
+#      https://docs.aws.amazon.com/eks/latest/userguide/efs-csi.html
+#   2. Create an EFS file system in the same VPC as your EKS cluster.
+#   3. Create the StorageClass (see below) pointing to your EFS file system ID.
+#
+# StorageClass example (create separately):
+#   kind: StorageClass
+#   apiVersion: storage.k8s.io/v1
+#   metadata:
+#     name: efs-sc
+#   provisioner: efs.csi.aws.com
+#   parameters:
+#     provisioningMode: efs-ap
+#     fileSystemId: fs-XXXXXXXXX   # replace with your EFS ID
+#     directoryPerms: "700"
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fs-demoapp-uploads
+  namespace: fs-demoapp
+  labels:
+    app.kubernetes.io/name: fs-demoapp
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 10Gi

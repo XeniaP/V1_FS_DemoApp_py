@@ -1,0 +1,41 @@
+# AWS Application Load Balancer Ingress for EKS.
+#
+# Prerequisites:
+#   - AWS Load Balancer Controller installed:
+#     https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html
+#   - Replace YOUR_DOMAIN_HERE with your actual domain (e.g., demoapp.example.com)
+#   - For HTTPS: create an ACM certificate and set the ARN in the annotation below
+#
+# After apply, get the ALB DNS:
+#   kubectl get ingress -n fs-demoapp
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fs-demoapp
+  namespace: fs-demoapp
+  labels:
+    app.kubernetes.io/name: fs-demoapp
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # Replace with your ACM certificate ARN for HTTPS:
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+spec:
+  rules:
+    - host: YOUR_DOMAIN_HERE
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fs-demoapp
+                port:
+                  number: 80
