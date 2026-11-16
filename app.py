@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, url_for, render_template, flash, jsonify
+from flask import Flask, request, redirect, url_for, render_template, flash, jsonify, g, has_request_context
 from werkzeug.utils import secure_filename
 import os
 import tempfile
@@ -56,7 +56,7 @@ def ready():
 
 @app.route('/')
 def upload_form():
-    return render_template('upload.html')
+    return render_template('upload.html', sdk_response=getattr(g, 'sdk_response', None))
 
 
 def scan_is_clean(result):
@@ -87,9 +87,13 @@ def malware_scan(file_path):
     try:
         handle = amaas.grpc.init_by_region(region=os.getenv("V1_REGION"), api_key=os.getenv("V1_API_KEY"))
         result = amaas.grpc.scan_file(
-            handle, file_name=file_path, pml=True, feedback=True,
-            tags=['DemoApp', 'Container', 'Python'], verbose=True,
+            handle, file_name=file_path, pml=True
         )
+        if has_request_context():
+            try:
+                g.sdk_response = json.dumps(json.loads(result), indent=2, ensure_ascii=False)
+            except (ValueError, TypeError):
+                g.sdk_response = str(result)
         # Preserve the entire response, including unknown fields and malformed JSON.
         # JSON escaping keeps each event on one line for container log collectors.
         app.logger.info(json.dumps({
@@ -160,6 +164,8 @@ def upload_file():
             os.unlink(tmp_path)
             flash(f'Archivo {filename} es malicioso', 'error')
     except ScanFailure as error:
+        if not getattr(g, 'sdk_response', None):
+            g.sdk_response = json.dumps({'error': str(error)}, indent=2, ensure_ascii=False)
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
         flash(str(error), 'scan_error')
@@ -168,7 +174,8 @@ def upload_file():
             os.unlink(tmp_path)
         flash(f'Error al procesar el archivo: {str(e)}', 'error')
 
-    return redirect(url_for('upload_form'))
+    # Keep large SDK responses in this request, outside session cookies and shared state.
+    return upload_form()
 
 
 if __name__ == "__main__":

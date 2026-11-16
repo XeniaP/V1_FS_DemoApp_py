@@ -51,10 +51,38 @@
                     <p class="privacy-note">El archivo se envía a File Security para su análisis.</p>
                 </form>
             </section>
-            <aside class="info-panel" aria-labelledby="flow-title">
-                <p class="eyebrow">PROTECCIÓN EN EL FLUJO</p><h2 id="flow-title">Antes de guardar,<br>verifica.</h2>
-                <ol class="flow"><li><span class="flow-number">01</span><div><h3>Selecciona un archivo</h3><p>Documentos e imágenes dentro de los formatos admitidos.</p></div></li><li><span class="flow-number">02</span><div><h3>Analiza con File Security</h3><p>El SDK envía el archivo al servicio para evaluar su contenido.</p></div></li><li><span class="flow-number">03</span><div><h3>Consulta el resultado</h3><p>Los archivos aceptados se guardan. Los rechazados se eliminan de la carga temporal.</p></div></li></ol>
-                <div class="demo-note"><span class="note-label">ENTORNO DE DEMOSTRACIÓN</span><p>Los archivos aceptados permanecen en el servidor. Utiliza archivos de prueba sin información sensible.</p></div>
+            <aside class="integration-panel" aria-label="Integraci&oacute;n y respuesta del SDK">
+                <section class="developer-card" aria-labelledby="code-title">
+                    <div class="developer-heading"><div><p class="eyebrow">INTEGRA FILE SECURITY</p><h2 id="code-title">De tu app al SDK.</h2></div><span class="language-badge">PYTHON</span></div>
+                    <p class="card-description">El mismo flujo de escaneo que utiliza esta demo.</p>
+                    <pre class="code-example" tabindex="0" aria-label="Ejemplo de integraci&oacute;n Python"><code>import json
+import os
+import amaas.grpc
+
+handle = amaas.grpc.init_by_region(
+    region=os.environ["V1_REGION"],
+    api_key=os.environ["V1_API_KEY"],
+)
+try:
+    response = amaas.grpc.scan_file(
+        handle,
+        file_name="documento.pdf",
+        pml=True,
+    )
+    result = json.loads(response)
+    print(json.dumps(result, indent=2))
+finally:
+    amaas.grpc.quit(handle)</code></pre>
+                    <p class="code-caption">Credenciales en variables de entorno. La respuesta JSON contiene el resultado del an&aacute;lisis.</p>
+                </section>
+                <section class="developer-card response-card" aria-labelledby="response-title">
+                    <div class="developer-heading"><div><p class="eyebrow">RESULTADO DEL SERVICIO</p><h2 id="response-title">Respuesta del SDK</h2></div><span class="language-badge">JSON</span></div>
+                    <p class="card-description" id="response-help">{% if sdk_response is not none %}Respuesta del &uacute;ltimo intento en esta p&aacute;gina.{% else %}Analiza un archivo para ver aqu&iacute; la respuesta real del servicio.{% endif %}</p>
+                    <label class="sr-only" for="sdk-response">Respuesta JSON de File Security</label>
+                    <textarea id="sdk-response" class="sdk-response" readonly spellcheck="false" aria-describedby="response-help" placeholder="La respuesta del SDK aparecer&aacute; aqu&iacute; despu&eacute;s del an&aacute;lisis.">{{ sdk_response if sdk_response is not none else '' }}</textarea>
+                    <p class="code-caption">{% if sdk_response is not none %}Las respuestas del servicio se muestran completas. Si la llamada falla sin respuesta, se muestra un error de la aplicaci&oacute;n.{% else %}Sin datos simulados. Se actualiza al completar cada intento.{% endif %}</p>
+                </section>
+                <div class="demo-note"><span class="note-label">ENTORNO DE DEMOSTRACI&Oacute;N</span><p>Los archivos aceptados permanecen en el servidor. Utiliza archivos de prueba sin informaci&oacute;n sensible.</p></div>
             </aside>
         </div>
     </main>

@@ -93,9 +93,13 @@ Calling the environment's Python directly also avoids needing to activate it in 
 
 Allowed extensions: `.txt`, `.pdf`, `.png`, `.jpg`, `.jpeg`, and `.gif` (case-insensitive). Flask limits the entire upload request to **16 MiB**; oversized requests receive HTTP 413.
 
-The app first writes the upload to a temporary file in the upload directory. It calls `amaas.grpc.init_by_region`, then `amaas.grpc.scan_file` with `pml=True`, `feedback=True`, `verbose=True`, and a list of demo tags. The verbose result includes per-engine findings rather than relying only on the compact `scanResult` field. Files are accepted only when all reported engines return zero detections and no errors. Compact responses are also supported: only an explicit `scanResult` of `null` or `0`, with no findings or errors, is accepted. Unknown or malformed responses are rejected.
+The app first writes the upload to a temporary file in the upload directory. It calls `amaas.grpc.init_by_region`, then `amaas.grpc.scan_file` with `pml=True`. Feedback, tags, and verbose mode use the SDK defaults in this demo. The result parser supports verbose responses with per-engine findings, accepting them only when all reported engines return zero detections and no errors. For the compact responses used by default, only an explicit `scanResult` of `null` or `0`, with no findings or errors, is accepted. Unknown or malformed responses are rejected.
 
 Scan failures prevent the upload from being saved and display a File Security alert instead of labeling the file as malicious. The temporary upload is deleted. Other processing errors produce a processing-error message.
+
+## Integration and response panel
+
+The right side of the page shows a Python integration example matching the demo's SDK options, followed by a read-only text box containing the actual scan response formatted as JSON. The full response is rendered on the upload POST, without storing it in session cookies or shared server state. A new GET starts with an empty response box. If the SDK call fails before returning a response, the box displays an application error object instead. The upload form retains the accepted/rejected notification.
 
 ## Extended SDK logs
 

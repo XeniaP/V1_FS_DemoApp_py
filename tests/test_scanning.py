@@ -53,8 +53,7 @@ class ScanLoggingTests(unittest.TestCase):
         self.assertEqual(events[0]['sdk_version'], '1.5.1')
         self.assertEqual(events[0]['correlation_id'], events[1]['correlation_id'])
         self.assertTrue(events[1]['accepted'])
-        self.assertTrue(scan.call_args.kwargs['verbose'])
-        self.assertEqual(scan.call_args.kwargs['tags'], ['DemoApp', 'Container', 'Python'])
+        self.assertTrue(scan.call_args.kwargs['pml'])
         quit.assert_called_once_with(init.return_value)
 
     @patch('app.amaas.grpc.quit')
@@ -112,6 +111,34 @@ class ScanLoggingTests(unittest.TestCase):
                     self.assertIn(event['correlation_id'], page)
                     self.assertNotIn('secret-api-key', ''.join(logs.output))
                     self.assertEqual(os.listdir(uploads), [])
+
+    @patch('app.amaas.grpc.quit')
+    @patch('app.amaas.grpc.scan_file')
+    @patch('app.amaas.grpc.init_by_region')
+    def test_response_display_is_complete_escaped_and_request_scoped(self, init, scan, quit):
+        payload = {
+            'scanResult': 0, 'scanId': 'display-test',
+            'metadata': 'x' * 8000,
+            'fileName': '</textarea><script>alert(1)</script>',
+        }
+        scan.return_value = json.dumps(payload)
+        with tempfile.TemporaryDirectory() as uploads, patch.dict(app.config, {
+            'TESTING': True, 'UPLOAD_FOLDER': uploads,
+        }):
+            client = app.test_client()
+            with self.assertLogs(app.logger, level='INFO'):
+                response = client.post('/', data={
+                    'file': (io.BytesIO(b'test'), 'example.txt'),
+                })
+            self.assertEqual(response.status_code, 200)
+            page = response.get_data(as_text=True)
+            self.assertIn('display-test', page)
+            self.assertIn(payload['metadata'], page)
+            self.assertNotIn('</textarea><script>', page)
+            self.assertIn('&lt;/textarea&gt;', page)
+            self.assertNotIn('display-test', client.get('/').get_data(as_text=True))
+            self.assertNotIn('display-test', app.test_client().get('/').get_data(as_text=True))
+            self.assertNotIn('metadata', ''.join(response.headers.getlist('Set-Cookie')))
 
 
 if __name__ == '__main__':
