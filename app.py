@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 import os
 import tempfile
 import amaas.grpc
+from amaas.grpc.exception import AMaasException, AMaasErrorCode
 import time
 import json
 import logging
@@ -19,6 +20,24 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+
+
+class ScanFailure(Exception):
+    """A scan could not complete; the message is safe to display to the user."""
+
+
+def api_key_alert(error):
+    if not isinstance(error, AMaasException):
+        return None
+    if error.error_code == AMaasErrorCode.MSG_ID_ERR_MISSING_AUTH:
+        return 'Falta la API key de File Security. Configura V1_API_KEY y reinicia la app.'
+    if error.error_code == AMaasErrorCode.MSG_ID_ERR_KEY_AUTH_FAILED:
+        return ('File Security rechazó la API key. Puede ser inválida, haber expirado '
+                'o no tener permisos. Revisa la clave, la región y el permiso Run file scan via SDK.')
+    if error.error_code == AMaasErrorCode.MSG_ID_GRPC_ERROR and error.params and error.params[0] == 7:
+        return ('File Security denegó el acceso (PERMISSION_DENIED). '
+                'Revisa los permisos de la API key y el acceso a File Security.')
+    return None
 
 
 def allowed_file(filename):
@@ -88,9 +107,21 @@ def malware_scan(file_path):
             'accepted': accepted,
         }))
         return accepted
-    except Exception:
+    except Exception as error:
+        alert = api_key_alert(error)
+        if alert:
+            # Use controlled messages: never expose the credential or raw service text.
+            app.logger.warning(json.dumps({
+                'event': 'filesecurity.api_key.alert',
+                'correlation_id': correlation_id,
+                'sdk_error_code': error.error_code.name,
+                'message': alert,
+            }))
+            raise ScanFailure(f'{alert} Referencia: {correlation_id}') from None
         app.logger.exception('File Security scan failed correlation_id=%s', correlation_id)
-        return False
+        raise ScanFailure(
+            f'No se pudo completar el análisis de File Security. Revisa los logs. Referencia: {correlation_id}'
+        ) from None
     finally:
         if handle is not None:
             try:
@@ -128,6 +159,10 @@ def upload_file():
         else:
             os.unlink(tmp_path)
             flash(f'Archivo {filename} es malicioso', 'error')
+    except ScanFailure as error:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        flash(str(error), 'scan_error')
     except Exception as e:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)

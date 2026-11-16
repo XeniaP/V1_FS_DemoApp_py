@@ -2,7 +2,11 @@ import json
 import unittest
 from unittest.mock import patch
 
-from app import app, malware_scan, scan_is_clean
+from app import app, malware_scan, scan_is_clean, ScanFailure
+from amaas.grpc.exception import AMaasException, AMaasErrorCode
+import io
+import os
+import tempfile
 
 
 class ScanResultTests(unittest.TestCase):
@@ -63,7 +67,8 @@ class ScanLoggingTests(unittest.TestCase):
                 scan.side_effect = None if malformed else RuntimeError('service unavailable')
                 scan.return_value = 'invalid JSON\nresponse'
                 with self.assertLogs(app.logger, level='INFO') as logs:
-                    self.assertFalse(malware_scan('sample.txt'))
+                    with self.assertRaises(ScanFailure):
+                        malware_scan('sample.txt')
                 if malformed:
                     event = json.loads(logs.records[0].getMessage())
                     self.assertEqual(event['sdk_response'], scan.return_value)
@@ -74,8 +79,39 @@ class ScanLoggingTests(unittest.TestCase):
     @patch('app.amaas.grpc.init_by_region', side_effect=RuntimeError('init failed'))
     def test_initialization_failure(self, init, quit):
         with self.assertLogs(app.logger, level='ERROR'):
-            self.assertFalse(malware_scan('sample.txt'))
+            with self.assertRaises(ScanFailure):
+                malware_scan('sample.txt')
         quit.assert_not_called()
+
+    @patch('app.amaas.grpc.quit')
+    @patch('app.amaas.grpc.scan_file')
+    @patch('app.amaas.grpc.init_by_region')
+    def test_api_alert_visible_logged_and_upload_removed(self, init, scan, quit):
+        errors = (
+            AMaasException(AMaasErrorCode.MSG_ID_ERR_MISSING_AUTH),
+            AMaasException(AMaasErrorCode.MSG_ID_ERR_KEY_AUTH_FAILED),
+            AMaasException(AMaasErrorCode.MSG_ID_GRPC_ERROR, 7, 'secret-api-key'),
+        )
+        with tempfile.TemporaryDirectory() as uploads, patch.dict(app.config, {
+            'TESTING': True, 'UPLOAD_FOLDER': uploads,
+        }):
+            for error in errors:
+                with self.subTest(error=error.error_code.name):
+                    scan.side_effect = error
+                    with self.assertLogs(app.logger, level='WARNING') as logs:
+                        response = app.test_client().post('/', data={
+                            'file': (io.BytesIO(b'test'), 'test.txt'),
+                        }, follow_redirects=True)
+                    page = response.get_data(as_text=True)
+                    self.assertIn('Alerta de File Security', page)
+                    self.assertIn('API key', page)
+                    self.assertNotIn('es malicioso', page)
+                    self.assertNotIn('secret-api-key', page)
+                    event = json.loads(logs.records[0].getMessage())
+                    self.assertEqual(event['event'], 'filesecurity.api_key.alert')
+                    self.assertIn(event['correlation_id'], page)
+                    self.assertNotIn('secret-api-key', ''.join(logs.output))
+                    self.assertEqual(os.listdir(uploads), [])
 
 
 if __name__ == '__main__':

@@ -95,13 +95,13 @@ Allowed extensions: `.txt`, `.pdf`, `.png`, `.jpg`, `.jpeg`, and `.gif` (case-in
 
 The app first writes the upload to a temporary file in the upload directory. It calls `amaas.grpc.init_by_region`, then `amaas.grpc.scan_file` with `pml=True`, `feedback=True`, `verbose=True`, and a list of demo tags. The verbose result includes per-engine findings rather than relying only on the compact `scanResult` field. Files are accepted only when all reported engines return zero detections and no errors. Compact responses are also supported: only an explicit `scanResult` of `null` or `0`, with no findings or errors, is accepted. Unknown or malformed responses are rejected.
 
-Scan exceptions are logged with a traceback and cause rejection; the UI labels these uploads as malicious too. Other processing errors produce a processing-error message. Consult the server output to distinguish a scan failure from a detection.
+Scan failures prevent the upload from being saved and display a File Security alert instead of labeling the file as malicious. The temporary upload is deleted. Other processing errors produce a processing-error message.
 
 ## Extended SDK logs
 
 Every completed SDK call emits an INFO-level `filesecurity.scan.response` event with the **entire raw JSON response** in `sdk_response`, plus the installed SDK version, temporary file path, elapsed milliseconds, and a local `correlation_id`. The response is JSON-escaped inside a single-line event to preserve every returned field without splitting container log records. It includes engine versions, findings, hashes, service scan ID, timings, and other metadata when supplied by the service. No fields are fabricated when absent.
 
-A second event, `filesecurity.scan.decision`, records the acceptance decision with the same correlation ID. Initialization, scanning, parsing, and cleanup failures are logged with tracebacks. The SDK channel is closed even when scanning fails.
+A second event, `filesecurity.scan.decision`, records the acceptance decision with the same correlation ID. General initialization, scanning, parsing, and cleanup failures are logged with tracebacks. API-key failures use controlled warning events instead of raw service text. The SDK channel is closed even when scanning fails.
 
 Logs go to the server console (stderr), including under Gunicorn; no separate log file is created. For containers:
 
@@ -112,6 +112,12 @@ kubectl logs -f deployment/fs-demoapp -n fs-demoapp
 ```
 
 API keys and uploaded file bytes are not added to the log events. Extended service responses may include account identifiers, filenames, hashes, and detection details; handle the logs accordingly.
+
+### API key alerts
+
+Missing credentials, SDK authentication failures, and gRPC `PERMISSION_DENIED` (status 7) produce a WARNING-level `filesecurity.api_key.alert` event. It contains the SDK error code, a safe explanatory message, and the correlation ID. The same alert and reference appear in the browser after an attempted upload. The credential and raw authentication error text are not included in these alerts.
+
+The SDK maps authentication rejection to a single error, so the app cannot reliably distinguish an invalid key, an expired key, and missing scan permissions. Check `V1_API_KEY`, `V1_REGION`, and the **Run file scan via SDK** permission. These alerts reflect errors returned during scanning; they do not proactively check key expiry. The launcher also stops with an explicit message if `V1_API_KEY` is absent before startup.
 
 To update an existing virtual environment to the pinned SDK version:
 

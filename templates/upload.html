@@ -31,7 +31,7 @@
                 {% if messages %}
                 <div class="results" aria-live="polite">
                     {% for category, message in messages %}
-                    <div class="notice {{ 'notice-success' if category == 'success' else 'notice-error' }}" role="{{ 'status' if category == 'success' else 'alert' }}"><strong>{{ 'Archivo aceptado' if category == 'success' else 'Archivo no aceptado' }}</strong><p>{{ message }}</p></div>
+                    <div class="notice {{ 'notice-success' if category == 'success' else 'notice-error' }}" role="{{ 'status' if category == 'success' else 'alert' }}"><strong>{{ 'Archivo aceptado' if category == 'success' else 'Alerta de File Security' if category == 'scan_error' else 'Archivo no aceptado' }}</strong><p>{{ message }}</p></div>
                     {% endfor %}
                 </div>
                 {% endif %}
