@@ -50,11 +50,11 @@ def malware_scan(file_path):
 @app.route('/', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
-        flash('No se seleccionó ningún archivo', 'error')
+        flash('Selecciona un archivo para iniciar el análisis.', 'error')
         return redirect(request.url)
     file = request.files['file']
     if file.filename == '':
-        flash('No se seleccionó ningún archivo', 'error')
+        flash('Selecciona un archivo para iniciar el análisis.', 'error')
         return redirect(request.url)
     if not (file and allowed_file(file.filename)):
         flash('Tipo de archivo no permitido', 'error')
