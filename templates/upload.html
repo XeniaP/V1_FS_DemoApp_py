@@ -55,6 +55,8 @@
                 <section class="developer-card" aria-labelledby="code-title">
                     <div class="developer-heading"><div><p class="eyebrow">INTEGRA FILE SECURITY</p><h2 id="code-title">De tu app al SDK.</h2></div><span class="language-badge">PYTHON</span></div>
                     <p class="card-description">El mismo flujo de escaneo que utiliza esta demo.</p>
+                    <button type="button" class="code-toggle" id="code-toggle" aria-expanded="false" aria-controls="integration-code">Mostrar ejemplo de c&oacute;digo</button>
+                    <div id="integration-code" hidden>
                     <pre class="code-example" tabindex="0" aria-label="Ejemplo de integraci&oacute;n Python"><code>import json
 import os
 import amaas.grpc
@@ -74,6 +76,7 @@ try:
 finally:
     amaas.grpc.quit(handle)</code></pre>
                     <p class="code-caption">Credenciales en variables de entorno. La respuesta JSON contiene el resultado del an&aacute;lisis.</p>
+                    </div>
                 </section>
                 <section class="developer-card response-card" aria-labelledby="response-title">
                     <div class="developer-heading"><div><p class="eyebrow">RESULTADO DEL SERVICIO</p><h2 id="response-title">Respuesta del SDK</h2></div><span class="language-badge">JSON</span></div>

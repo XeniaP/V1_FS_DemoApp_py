@@ -1,4 +1,12 @@
-﻿(() => {
+(() => {
+    const codeToggle = document.getElementById('code-toggle');
+    const integrationCode = document.getElementById('integration-code');
+    codeToggle.addEventListener('click', () => {
+        const expanded = codeToggle.getAttribute('aria-expanded') !== 'true';
+        integrationCode.hidden = !expanded;
+        codeToggle.setAttribute('aria-expanded', String(expanded));
+        codeToggle.textContent = expanded ? 'Ocultar ejemplo de c\u00f3digo' : 'Mostrar ejemplo de c\u00f3digo';
+    });
     const form = document.getElementById('upload-form');
     const input = document.getElementById('file');
     const zone = document.getElementById('drop-zone');
