@@ -1,0 +1,10 @@
+POLÍTICA DE VIAJES — ACME DEMO
+
+Los viajes de trabajo requieren aprobación del responsable del equipo antes de reservar.
+El límite de reembolso de hotel es de 180 USD por noche, incluyendo impuestos.
+El límite para comidas es de 55 USD por día. No se reembolsan bebidas alcohólicas.
+Se deben presentar los recibos en un plazo de 15 días después del regreso.
+Los vuelos se reservan en clase económica salvo autorización de la dirección.
+Los gastos no documentados no se reembolsan. Contacto de consultas: equipo de Finanzas.
+
+Este documento es ficticio y solo se utiliza para demostrar recuperación de información.

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#d71920">
+  <title>TrendAI · AI File Security Lab</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a href="/" class="brand">Trend<span>AI</span><small>VISION ONE</small></a>
+    <div class="nav-caption">EXPERIENCE LAB</div>
+    <div class="nav-title">AI File Security</div>
+    <nav aria-label="Flujos de demostración">
+      <button class="nav-item active" data-mode="chat" aria-pressed="true"><span aria-hidden="true">↗</span><span>Chat con archivos<small>Protege cada adjunto</small></span></button>
+      <button class="nav-item" data-mode="rag" aria-pressed="false"><span aria-hidden="true">▤</span><span>Knowledge / RAG<small>Protege la ingesta</small></span></button>
+    </nav>
+    <div class="sidebar-bottom"><span class="side-symbol" aria-hidden="true">↳</span><strong>Archivos primero.<br>Confianza después.</strong><p>Analiza antes de extraer, indexar o consultar.</p><span class="version">FILE SECURITY SDK · PYTHON</span></div>
+  </aside>
+  <div class="shell">
+    <header class="topbar"><div class="breadcrumb">TrendAI Vision One <span>/</span> AI File Security Lab</div><div class="environment" id="scan-mode">Cargando configuración…</div></header>
+    <main>
+      <section class="hero">
+        <div><p class="eyebrow">PROTECCIÓN ANTES DEL CONTEXTO</p><h1 id="page-title">Tus archivos. Tu asistente.<br><span>Una capa más de seguridad.</span></h1><p id="page-description">Demuestra cómo File Security analiza los adjuntos antes de convertirlos en contexto para un chatbot.</p></div>
+        <div class="hero-tag"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M24 5 40 12v12c0 10-16 19-16 19S8 34 8 24V12L24 5Z"/><path d="m16 24 5 5 11-11"/></svg><span>FILE SECURITY<strong>AI workflows</strong></span></div>
+      </section>
+      <div id="simulation-banner" class="simulation-banner" hidden><strong>Modo simulación</strong> · Los resultados son sintéticos. No se llama al SDK ni se acredita protección real.</div>
+      <section class="pipeline" aria-label="Flujo de protección">
+        <div class="pipeline-step" data-stage="received"><span>01</span><div>Archivo recibido<small>Entrada no confiable</small></div></div><i aria-hidden="true">→</i>
+        <div class="pipeline-step scan-step" data-stage="scanned"><span>02</span><div>File Security<small>Análisis antimalware</small></div></div><i aria-hidden="true">→</i>
+        <div class="pipeline-step" data-stage="extracted"><span>03</span><div>Extraer texto<small>Solo si se acepta</small></div></div><i aria-hidden="true">→</i>
+        <div class="pipeline-step" data-stage="indexed"><span>04</span><div id="last-stage">Contexto del chat<small>Disponible para consultar</small></div></div>
+      </section>
+      <div id="app-error" class="app-error" role="alert" hidden></div>
+      <div class="workspace">
+        <section class="card upload-panel" aria-labelledby="upload-title">
+          <div class="section-heading"><div><p class="eyebrow" id="upload-eyebrow">01 / ADJUNTAR</p><h2 id="upload-title">Antes de preguntar.</h2></div><span class="badge">SCAN → ALLOW</span></div>
+          <p class="description" id="upload-description">El adjunto solo llega al chat si pasa el análisis y se puede extraer su texto.</p>
+          <form id="upload-form">
+            <label class="dropzone" id="dropzone" for="file"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M16 34H12a8 8 0 0 1 0-16 12 12 0 0 1 24-1 9 9 0 0 1 0 17h-4M24 39V21m-7 7 7-7 7 7"/></svg><strong>Arrastra un documento aquí</strong><span>o selecciónalo desde tu equipo</span><input id="file" name="file" type="file" accept=".txt,.md,.pdf" required aria-describedby="file-limits"><small id="file-limits">TXT, MD o PDF con texto · Solicitud máxima: 8 MiB</small></label>
+            <div id="selected-file" class="selected-file" hidden></div>
+            <button type="submit" class="primary" id="upload-button">Analizar y adjuntar <span aria-hidden="true">→</span></button>
+            <p class="upload-status" id="upload-status" role="status"></p>
+          </form>
+          <div class="sample-area"><span class="mini-label">¿SIN UN ARCHIVO A MANO?</span><div class="sample-buttons"><button data-sample="politica-viajes.txt">Política de viajes ↗</button><button data-sample="manual-soporte.md">Manual de soporte ↗</button><button data-sample="prompt-injection.txt">Contenido no confiable ↗</button><button data-sample="simulated-block.txt" id="simulation-sample" hidden>Bloqueo simulado ↗</button></div><p>Los ejemplos se cargan por el mismo flujo de análisis que tus archivos.</p></div>
+          <div class="document-heading"><h3 id="documents-title">Contexto del chat</h3><button class="text-button" id="reset-button" type="button">Limpiar flujo</button></div>
+          <div id="documents" class="documents"><p class="empty-small">Todavía no hay documentos aceptados.</p></div>
+          <div class="scope-note" id="scope-note">Un adjunto activo. Una nueva carga aceptada reemplaza el contexto anterior; un rechazo lo conserva.</div>
+        </section>
+        <section class="card chat-panel" aria-labelledby="chat-title">
+          <div class="chat-heading"><div class="assistant-avatar" aria-hidden="true">✳</div><div><h2 id="chat-title">Document assistant</h2><p id="answer-engine">Cargando motor…</p></div><span class="scope-badge" id="scope-badge">CHAT</span></div>
+          <div class="messages" id="messages" role="log" aria-live="polite" aria-label="Conversación"><div class="welcome"><span class="welcome-icon" aria-hidden="true">↗</span><h3>Empieza con un archivo.</h3><p>Adjunta un documento y haz una pregunta. Aquí verás una respuesta con las fuentes que realmente se consultaron.</p></div></div>
+          <div class="suggestions"><button data-question="¿Cuál es el límite de reembolso de hotel?">Límite de hotel</button><button data-question="¿Cuál es el tiempo de respuesta para un incidente crítico?">Soporte crítico</button><button data-question="Resume los documentos disponibles">Resumir documentos</button></div>
+          <form id="question-form" class="question-form"><label class="sr-only" for="question">Tu pregunta</label><input id="question" name="question" maxlength="1000" required placeholder="Pregunta sobre los documentos aceptados…" autocomplete="off"><button type="submit" id="ask-button" aria-label="Enviar pregunta">↑</button></form>
+          <p class="assistant-note">Las fuentes son datos no confiables. Verifica la respuesta antes de utilizarla.</p>
+        </section>
+      </div>
+      <section class="card evidence-panel" aria-labelledby="evidence-title">
+        <div class="section-heading"><div><p class="eyebrow">OBSERVA LA DECISIÓN</p><h2 id="evidence-title">Lo que entró. Lo que se detuvo.</h2></div><div class="counters" id="counters"></div></div>
+        <div class="evidence-grid"><div><h3>Actividad de este flujo</h3><div id="events" class="events"><p class="empty-small">Carga un documento para ver su trazabilidad.</p></div></div><div class="response-section"><div class="response-heading"><label for="sdk-response">Respuesta del análisis seleccionado</label><span id="response-badge" class="badge">SIN ANÁLISIS</span></div><textarea id="sdk-response" readonly spellcheck="false" placeholder="Aquí aparecerá la respuesta real del SDK. En simulación se mostrará una respuesta sintética."></textarea><p class="response-note">Sin veredicto válido, el archivo no se incorpora al contexto ni al índice.</p></div></div>
+        <details class="code-details"><summary>Ver ejemplo de integración en un flujo de IA</summary><pre><code>response = amaas.grpc.scan_buffer(
+    handle, bytes_buffer=file_bytes,
+    uid=filename, pml=True, verbose=True,
+)
+result = json.loads(response)
+
+# Inspect detections AND engine errors. Reject unknown results.
+if verdict(result) != "clean":
+    return reject_upload()
+
+# Only now: parse, chunk, index, and retrieve for the assistant.
+text = extract_text(file_bytes, filename)
+chunks = chunk_text(text)
+index(chunks)</code></pre></details>
+      </section>
+      <div class="boundary"><span aria-hidden="true">ⓘ</span><p><strong>Una capa de defensa, con un alcance concreto.</strong> File Security analiza malware en archivos. No acredita que el contenido sea verdadero ni sustituye controles de prompt injection, fuga de datos o autorización. Un archivo aceptado puede contener instrucciones maliciosas en texto.</p></div>
+      <footer><span>TrendAI · AI File Security Lab</span><span>Demo de integración · Chat + RAG</span></footer>
+    </main>
+  </div>
+</body>
+</html>

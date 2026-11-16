@@ -1,0 +1,6 @@
+[DEMO_BLOCK]
+
+This is harmless text, not a virus or an EICAR test file.
+Only the explicit simulation mode treats this marker as a synthetic detection.
+In live mode, the real SDK decides the verdict; this marker does not force a block.
+Use this sample to show that a rejected document never reaches extraction or the RAG index.

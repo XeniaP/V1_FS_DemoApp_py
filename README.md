@@ -1,5 +1,9 @@
 # File Security SDK Demo (Python)
 
+## Additional app: AI uploads and RAG
+
+The repository also includes a separate **TrendAI AI File Security Lab** in [`ai_demo/`](ai_demo/README.md). Run `bash run_ai.sh` from the repository root and open **http://localhost:8081**. It demonstrates scanning before chatbot attachment processing and RAG document ingestion, with source citations, scan evidence, an explicit offline simulation mode, and optional Ollama generation. See its README for the demo walkthrough and setup.
+
 A Flask application demonstrating file scanning with the TrendAI Vision One File Security Python SDK (`visionone-filesecurity`, imported as `amaas.grpc`). Users upload a file through a browser, and the app scans it before keeping it in the upload directory. The web interface displays messages in Spanish.
 
 ## Requirements
