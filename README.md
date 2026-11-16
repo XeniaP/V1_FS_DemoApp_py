@@ -1,6 +1,6 @@
 # File Security SDK Demo (Python)
 
-A Flask application demonstrating file scanning with the Trend Micro Vision One File Security Python SDK (`visionone-filesecurity`, imported as `amaas.grpc`). Users upload a file through a browser, and the app scans it before keeping it in the upload directory. The web interface displays messages in Spanish.
+A Flask application demonstrating file scanning with the TrendAI Vision One File Security Python SDK (`visionone-filesecurity`, imported as `amaas.grpc`). Users upload a file through a browser, and the app scans it before keeping it in the upload directory. The web interface displays messages in Spanish.
 
 ## Requirements
 
