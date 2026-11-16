@@ -4,7 +4,7 @@ A Flask application demonstrating file scanning with the Trend Micro Vision One 
 
 ## Requirements
 
-- Python 3 with `pip` and `venv` available. The included Dockerfile uses Python 3.9; your Python version must also be supported by the installed SDK.
+- Python 3.11 through 3.14 with `pip` and `venv` available. The included Dockerfile uses Python 3.13. The SDK is pinned to `visionone-filesecurity==1.5.1`, the latest stable PyPI release verified on November 16, 2026.
 - A Vision One API key authorized to use File Security, and the region associated with that service.
 - Network access to the File Security service and, during installation, the Python package index.
 - Bash for the quick-start script (Linux, macOS, WSL, or Git Bash on Windows).
@@ -87,15 +87,42 @@ Calling the environment's Python directly also avoids needing to activate it in 
 ## Use the demo
 
 1. Open the app in your browser.
-2. Select a file and click **Subir**.
+2. Select a file and click **Analizar archivo**.
 3. Read the success or error message after the scan.
 4. Accepted files are stored under `UPLOAD_FOLDER` with a sanitized filename. An accepted upload with the same filename replaces the previous file.
 
 Allowed extensions: `.txt`, `.pdf`, `.png`, `.jpg`, `.jpeg`, and `.gif` (case-insensitive). Flask limits the entire upload request to **16 MiB**; oversized requests receive HTTP 413.
 
-The app first writes the upload to a temporary file in the upload directory. It calls `amaas.grpc.init_by_region`, then `amaas.grpc.scan_file` with `pml=True`, `feedback=True`, and demo tags. A returned `scanResult` of `1` is rejected; a missing value also defaults to rejection. Other returned values are currently accepted by the demo.
+The app first writes the upload to a temporary file in the upload directory. It calls `amaas.grpc.init_by_region`, then `amaas.grpc.scan_file` with `pml=True`, `feedback=True`, `verbose=True`, and a list of demo tags. The verbose result includes per-engine findings rather than relying only on the compact `scanResult` field. Files are accepted only when all reported engines return zero detections and no errors. Compact responses are also supported: only an explicit `scanResult` of `null` or `0`, with no findings or errors, is accepted. Unknown or malformed responses are rejected.
 
-Scan exceptions handled inside `malware_scan` are printed to the server console and cause rejection; the UI labels these uploads as malicious too. Other processing errors produce a processing-error message. Consult the server output to distinguish a scan failure from a detection.
+Scan exceptions are logged with a traceback and cause rejection; the UI labels these uploads as malicious too. Other processing errors produce a processing-error message. Consult the server output to distinguish a scan failure from a detection.
+
+## Extended SDK logs
+
+Every completed SDK call emits an INFO-level `filesecurity.scan.response` event with the **entire raw JSON response** in `sdk_response`, plus the installed SDK version, temporary file path, elapsed milliseconds, and a local `correlation_id`. The response is JSON-escaped inside a single-line event to preserve every returned field without splitting container log records. It includes engine versions, findings, hashes, service scan ID, timings, and other metadata when supplied by the service. No fields are fabricated when absent.
+
+A second event, `filesecurity.scan.decision`, records the acceptance decision with the same correlation ID. Initialization, scanning, parsing, and cleanup failures are logged with tracebacks. The SDK channel is closed even when scanning fails.
+
+Logs go to the server console (stderr), including under Gunicorn; no separate log file is created. For containers:
+
+```bash
+docker logs -f <container-name-or-id>
+# Kubernetes:
+kubectl logs -f deployment/fs-demoapp -n fs-demoapp
+```
+
+API keys and uploaded file bytes are not added to the log events. Extended service responses may include account identifiers, filenames, hashes, and detection details; handle the logs accordingly.
+
+To update an existing virtual environment to the pinned SDK version:
+
+```bash
+python -m pip install --upgrade -r requirements.txt
+python -c "from importlib.metadata import version; print(version('visionone-filesecurity'))"
+```
+
+Recreate environments older than Python 3.11 with a supported Python version. `bash run.sh` also installs the pinned version on startup. Rebuild Docker images to apply both the SDK and Python updates.
+
+Release and API references: [PyPI](https://pypi.org/project/visionone-filesecurity/1.5.1/) and the [official Python SDK guide](https://github.com/trendmicro/tm-v1-fs-python-sdk).
 
 ## Health checks
 

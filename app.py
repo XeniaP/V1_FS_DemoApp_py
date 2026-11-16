@@ -5,8 +5,12 @@ import tempfile
 import amaas.grpc
 import time
 import json
+import logging
+from importlib.metadata import version
+from uuid import uuid4
 
 app = Flask(__name__)
+app.logger.setLevel(logging.INFO)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'change-me-in-production')
 
 UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
@@ -36,15 +40,63 @@ def upload_form():
     return render_template('upload.html')
 
 
-def malware_scan(file_path):
-    handle = amaas.grpc.init_by_region(region=os.getenv("V1_REGION"), api_key=os.getenv("V1_API_KEY"))
-    try:
-        result = amaas.grpc.scan_file(handle, file_name=file_path, pml=True, feedback=True, tags="['DemoApp', 'Container', 'Python']")
-        amaas.grpc.quit(handle)
-        return json.loads(result).get("scanResult", 1) != 1
-    except Exception as e:
-        print(e)
+def scan_is_clean(result):
+    """Read both SDK response formats; reject detections, errors and unknown data."""
+    if not isinstance(result, dict):
         return False
+    if result.get('scanResult') not in (None, 0) or result.get('foundMalwares') or result.get('error'):
+        return False
+    if 'result' in result:
+        engines = result['result']
+        if not isinstance(engines, dict) or not engines:
+            return False
+        return all(
+            isinstance(engine, dict)
+            and type(engine.get('malwareCount')) is int
+            and engine['malwareCount'] == 0
+            and not engine.get('malware')
+            and not engine.get('error')
+            for engine in engines.values()
+        )
+    return 'scanResult' in result and result['scanResult'] in (None, 0)
+
+
+def malware_scan(file_path):
+    handle = None
+    correlation_id = uuid4().hex
+    started = time.perf_counter()
+    try:
+        handle = amaas.grpc.init_by_region(region=os.getenv("V1_REGION"), api_key=os.getenv("V1_API_KEY"))
+        result = amaas.grpc.scan_file(
+            handle, file_name=file_path, pml=True, feedback=True,
+            tags=['DemoApp', 'Container', 'Python'], verbose=True,
+        )
+        # Preserve the entire response, including unknown fields and malformed JSON.
+        # JSON escaping keeps each event on one line for container log collectors.
+        app.logger.info(json.dumps({
+            'event': 'filesecurity.scan.response',
+            'correlation_id': correlation_id,
+            'sdk_version': version('visionone-filesecurity'),
+            'file_path': file_path,
+            'elapsed_ms': round((time.perf_counter() - started) * 1000, 2),
+            'sdk_response': result,
+        }))
+        accepted = scan_is_clean(json.loads(result))
+        app.logger.info(json.dumps({
+            'event': 'filesecurity.scan.decision',
+            'correlation_id': correlation_id,
+            'accepted': accepted,
+        }))
+        return accepted
+    except Exception:
+        app.logger.exception('File Security scan failed correlation_id=%s', correlation_id)
+        return False
+    finally:
+        if handle is not None:
+            try:
+                amaas.grpc.quit(handle)
+            except Exception:
+                app.logger.exception('File Security cleanup failed correlation_id=%s', correlation_id)
 
 
 @app.route('/', methods=['POST'])
