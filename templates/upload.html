@@ -66,9 +66,12 @@ handle = amaas.grpc.init_by_region(
     api_key=os.environ["V1_API_KEY"],
 )
 try:
-    response = amaas.grpc.scan_file(
+    with open("documento.pdf", "rb") as file:
+        file_bytes = file.read()
+    response = amaas.grpc.scan_buffer(
         handle,
-        file_name="documento.pdf",
+        bytes_buffer=file_bytes,
+        uid="documento.pdf",
         pml=True,
     )
     result = json.loads(response)

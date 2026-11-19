@@ -80,14 +80,14 @@ def scan_is_clean(result):
     return 'scanResult' in result and result['scanResult'] in (None, 0)
 
 
-def malware_scan(file_path):
+def malware_scan(content, filename):
     handle = None
     correlation_id = uuid4().hex
     started = time.perf_counter()
     try:
         handle = amaas.grpc.init_by_region(region=os.getenv("V1_REGION"), api_key=os.getenv("V1_API_KEY"))
-        result = amaas.grpc.scan_file(
-            handle, file_name=file_path, pml=True
+        result = amaas.grpc.scan_buffer(
+            handle, bytes_buffer=content, uid=filename, pml=True
         )
         if has_request_context():
             try:
@@ -100,7 +100,7 @@ def malware_scan(file_path):
             'event': 'filesecurity.scan.response',
             'correlation_id': correlation_id,
             'sdk_version': version('visionone-filesecurity'),
-            'file_path': file_path,
+            'file_name': filename,
             'elapsed_ms': round((time.perf_counter() - started) * 1000, 2),
             'sdk_response': result,
         }))
@@ -150,29 +150,34 @@ def upload_file():
     filename = secure_filename(file.filename)
     ext = os.path.splitext(filename)[1]
 
-    # Save to temp location first, then scan before committing to uploads
-    fd, tmp_path = tempfile.mkstemp(suffix=ext, dir=app.config['UPLOAD_FOLDER'])
+    # Scan the upload in memory: local AV must not intercept a temporary file
+    # before the SDK can read it. Only accepted bytes are ever written to disk.
+    tmp_path = None
     try:
-        with os.fdopen(fd, 'wb') as tmp_file:
-            file.save(tmp_file)
-
-        if malware_scan(tmp_path):
+        content = file.read()
+        if malware_scan(content, filename):
+            fd, tmp_path = tempfile.mkstemp(suffix=ext, dir=app.config['UPLOAD_FOLDER'])
+            with os.fdopen(fd, 'wb') as tmp_file:
+                tmp_file.write(content)
             final_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             os.replace(tmp_path, final_path)
             flash(f'Archivo {filename} subido exitosamente', 'success')
         else:
-            os.unlink(tmp_path)
             flash(f'Archivo {filename} es malicioso', 'error')
     except ScanFailure as error:
         if not getattr(g, 'sdk_response', None):
             g.sdk_response = json.dumps({'error': str(error)}, indent=2, ensure_ascii=False)
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
         flash(str(error), 'scan_error')
     except Exception as e:
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+        app.logger.exception('Failed to process or save uploaded file')
         flash(f'Error al procesar el archivo: {str(e)}', 'error')
+    finally:
+        if tmp_path is not None:
+            try:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+            except OSError:
+                app.logger.warning('Could not remove upload temporary file', exc_info=True)
 
     # Keep large SDK responses in this request, outside session cookies and shared state.
     return upload_form()

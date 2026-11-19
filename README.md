@@ -97,9 +97,9 @@ Calling the environment's Python directly also avoids needing to activate it in 
 
 Allowed extensions: `.txt`, `.pdf`, `.png`, `.jpg`, `.jpeg`, and `.gif` (case-insensitive). Flask limits the entire upload request to **16 MiB**; oversized requests receive HTTP 413.
 
-The app first writes the upload to a temporary file in the upload directory. It calls `amaas.grpc.init_by_region`, then `amaas.grpc.scan_file` with `pml=True`. Feedback, tags, and verbose mode use the SDK defaults in this demo. The result parser supports verbose responses with per-engine findings, accepting them only when all reported engines return zero detections and no errors. For the compact responses used by default, only an explicit `scanResult` of `null` or `0`, with no findings or errors, is accepted. Unknown or malformed responses are rejected.
+The app reads the upload into memory and calls `amaas.grpc.init_by_region`, then `amaas.grpc.scan_buffer` with `pml=True`. Rejected files and scan failures are never written to disk. Only accepted files are written to a temporary file and then atomically moved to their final name in the upload directory. This avoids reopening a temporary upload for SDK scanning on Windows, where local antivirus interference or SDK file-handle issues can cause local I/O failures. Feedback, tags, and verbose mode use the SDK defaults in this demo. The result parser supports verbose responses with per-engine findings, accepting them only when all reported engines return zero detections and no errors. For the compact responses used by default, only an explicit `scanResult` of `null` or `0`, with no findings or errors, is accepted. Unknown or malformed responses are rejected.
 
-Scan failures prevent the upload from being saved and display a File Security alert instead of labeling the file as malicious. The temporary upload is deleted. Other processing errors produce a processing-error message.
+Scan failures prevent the upload from being saved and display a File Security alert instead of labeling the file as malicious. Any temporary file created while saving an accepted upload is cleaned up when possible. Other processing errors produce a processing-error message.
 
 ## Integration and response panel
 
@@ -107,7 +107,7 @@ The right side of the page shows a Python integration example matching the demo'
 
 ## Extended SDK logs
 
-Every completed SDK call emits an INFO-level `filesecurity.scan.response` event with the **entire raw JSON response** in `sdk_response`, plus the installed SDK version, temporary file path, elapsed milliseconds, and a local `correlation_id`. The response is JSON-escaped inside a single-line event to preserve every returned field without splitting container log records. It includes engine versions, findings, hashes, service scan ID, timings, and other metadata when supplied by the service. No fields are fabricated when absent.
+Every completed SDK call emits an INFO-level `filesecurity.scan.response` event with the **entire raw JSON response** in `sdk_response`, plus the installed SDK version, sanitized filename, elapsed milliseconds, and a local `correlation_id`. The response is JSON-escaped inside a single-line event to preserve every returned field without splitting container log records. It includes engine versions, findings, hashes, service scan ID, timings, and other metadata when supplied by the service. No fields are fabricated when absent.
 
 A second event, `filesecurity.scan.decision`, records the acceptance decision with the same correlation ID. General initialization, scanning, parsing, and cleanup failures are logged with tracebacks. API-key failures use controlled warning events instead of raw service text. The SDK channel is closed even when scanning fails.
 

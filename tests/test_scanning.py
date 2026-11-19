@@ -37,7 +37,7 @@ class ScanResultTests(unittest.TestCase):
 
 class ScanLoggingTests(unittest.TestCase):
     @patch('app.amaas.grpc.quit')
-    @patch('app.amaas.grpc.scan_file')
+    @patch('app.amaas.grpc.scan_buffer')
     @patch('app.amaas.grpc.init_by_region')
     def test_full_response_and_extended_options(self, init, scan, quit):
         response = {
@@ -47,17 +47,19 @@ class ScanLoggingTests(unittest.TestCase):
         }
         scan.return_value = json.dumps(response)
         with self.assertLogs(app.logger, level='INFO') as logs:
-            self.assertTrue(malware_scan('sample.txt'))
+            self.assertTrue(malware_scan(b'test', 'sample.txt'))
         events = [json.loads(record.getMessage()) for record in logs.records]
         self.assertEqual(json.loads(events[0]['sdk_response']), response)
         self.assertEqual(events[0]['sdk_version'], '1.5.1')
         self.assertEqual(events[0]['correlation_id'], events[1]['correlation_id'])
         self.assertTrue(events[1]['accepted'])
         self.assertTrue(scan.call_args.kwargs['pml'])
+        self.assertEqual(scan.call_args.kwargs['bytes_buffer'], b'test')
+        self.assertEqual(scan.call_args.kwargs['uid'], 'sample.txt')
         quit.assert_called_once_with(init.return_value)
 
     @patch('app.amaas.grpc.quit')
-    @patch('app.amaas.grpc.scan_file')
+    @patch('app.amaas.grpc.scan_buffer')
     @patch('app.amaas.grpc.init_by_region')
     def test_failures_reject_and_close_channel(self, init, scan, quit):
         for malformed in (True, False):
@@ -67,7 +69,7 @@ class ScanLoggingTests(unittest.TestCase):
                 scan.return_value = 'invalid JSON\nresponse'
                 with self.assertLogs(app.logger, level='INFO') as logs:
                     with self.assertRaises(ScanFailure):
-                        malware_scan('sample.txt')
+                        malware_scan(b'test', 'sample.txt')
                 if malformed:
                     event = json.loads(logs.records[0].getMessage())
                     self.assertEqual(event['sdk_response'], scan.return_value)
@@ -79,11 +81,11 @@ class ScanLoggingTests(unittest.TestCase):
     def test_initialization_failure(self, init, quit):
         with self.assertLogs(app.logger, level='ERROR'):
             with self.assertRaises(ScanFailure):
-                malware_scan('sample.txt')
+                malware_scan(b'test', 'sample.txt')
         quit.assert_not_called()
 
     @patch('app.amaas.grpc.quit')
-    @patch('app.amaas.grpc.scan_file')
+    @patch('app.amaas.grpc.scan_buffer')
     @patch('app.amaas.grpc.init_by_region')
     def test_api_alert_visible_logged_and_upload_removed(self, init, scan, quit):
         errors = (
@@ -113,7 +115,7 @@ class ScanLoggingTests(unittest.TestCase):
                     self.assertEqual(os.listdir(uploads), [])
 
     @patch('app.amaas.grpc.quit')
-    @patch('app.amaas.grpc.scan_file')
+    @patch('app.amaas.grpc.scan_buffer')
     @patch('app.amaas.grpc.init_by_region')
     def test_response_display_is_complete_escaped_and_request_scoped(self, init, scan, quit):
         payload = {
@@ -139,6 +141,47 @@ class ScanLoggingTests(unittest.TestCase):
             self.assertNotIn('display-test', client.get('/').get_data(as_text=True))
             self.assertNotIn('display-test', app.test_client().get('/').get_data(as_text=True))
             self.assertNotIn('metadata', ''.join(response.headers.getlist('Set-Cookie')))
+
+    @patch('app.tempfile.mkstemp', side_effect=AssertionError('Rejected files must not be written'))
+    @patch('app.amaas.grpc.quit')
+    @patch('app.amaas.grpc.scan_buffer', return_value='{"scanResult": 1}')
+    @patch('app.amaas.grpc.init_by_region')
+    def test_blocked_upload_is_scanned_without_touching_disk(self, init, scan, quit, mkstemp):
+        response = app.test_client().post('/', data={
+            'file': (io.BytesIO(b'antivirus-test-bytes'), 'test.txt'),
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('es malicioso', response.get_data(as_text=True))
+        self.assertEqual(scan.call_args.kwargs['bytes_buffer'], b'antivirus-test-bytes')
+        mkstemp.assert_not_called()
+
+    @patch('app.amaas.grpc.quit')
+    @patch('app.amaas.grpc.scan_buffer', return_value='{"scanResult": 0}')
+    @patch('app.amaas.grpc.init_by_region')
+    def test_accepted_upload_is_saved_after_scan(self, init, scan, quit):
+        with tempfile.TemporaryDirectory() as uploads, patch.dict(app.config, {'UPLOAD_FOLDER': uploads}):
+            def result(*args, **kwargs):
+                self.assertEqual(os.listdir(uploads), [])
+                return '{"scanResult": 0}'
+            scan.side_effect = result
+            response = app.test_client().post('/', data={
+                'file': (io.BytesIO(b'accepted-data'), 'accepted.txt'),
+            })
+            self.assertEqual(response.status_code, 200)
+            with open(os.path.join(uploads, 'accepted.txt'), 'rb') as saved:
+                self.assertEqual(saved.read(), b'accepted-data')
+
+    @patch('app.tempfile.mkstemp', side_effect=OSError(22, 'Invalid argument'))
+    @patch('app.amaas.grpc.quit')
+    @patch('app.amaas.grpc.scan_buffer', return_value='{"scanResult": 0}')
+    @patch('app.amaas.grpc.init_by_region')
+    def test_save_error_does_not_crash_cleanup(self, init, scan, quit, mkstemp):
+        with self.assertLogs(app.logger, level='ERROR'):
+            response = app.test_client().post('/', data={
+                'file': (io.BytesIO(b'test'), 'test.txt'),
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Error al procesar', response.get_data(as_text=True))
 
 
 if __name__ == '__main__':
