@@ -9,6 +9,7 @@ from uuid import uuid4
 os.environ.setdefault('TM_AM_SCAN_TIMEOUT_SECS', '30')
 import amaas.grpc
 import grpc
+from .test_files import eicar_bytes
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -52,7 +53,7 @@ def scan_bytes(content, filename, mode='live'):
     try:
         if mode == 'simulation':
             # This marker is not malware and is never used as a live SDK verdict.
-            detected = b'[DEMO_BLOCK]' in content
+            detected = b'[DEMO_BLOCK]' in content or content == eicar_bytes()
             response = {
                 'simulation': True, 'scanId': f'sim-{correlation_id}',
                 'scanResult': 1 if detected else 0,

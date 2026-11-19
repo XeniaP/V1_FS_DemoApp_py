@@ -6,6 +6,8 @@
   let selectedId = null;
   let busy = true;
   const conversations = { chat: [], rag: [] };
+  const labResults = {};
+  const labTitles = { normal: '01 / RAG normal', unprotected: '02 / Sin protección', protected: '03 / Con File Security' };
   const labels = { clean: 'ACEPTADO', blocked: 'BLOQUEADO', error: 'NO INCORPORADO' };
 
   function node(tag, text, className) {
@@ -48,6 +50,7 @@
   }
   function render() {
     const rag = mode === 'rag';
+    $('rag-lab').hidden = !rag;
     document.querySelectorAll('[data-mode]').forEach(button => {
       const active = button.dataset.mode === mode;
       button.classList.toggle('active', active);
@@ -248,6 +251,70 @@
       $('file').value = ''; $('selected-file').hidden = true;
       await refresh();
     } catch (error) { showError(error.message); }
+    finally { setBusy(false); }
+  });
+  function showLabResult(result) {
+    $('lab-inspector').hidden = false;
+    $('lab-selected-title').textContent = labTitles[result.scenario];
+    const scan = result.scan;
+    $('lab-scan-badge').textContent = scan.scan_mode === 'not_scanned'
+      ? 'SIN ANÁLISIS · LABORATORIO' : scan.scan_mode === 'simulation' ? 'RESULTADO SIMULADO' : 'SDK REAL';
+    $('lab-summary').textContent = result.summary + (scan.error ? ` ${scan.error}` : '');
+    $('lab-stage-list').replaceChildren();
+    result.steps.forEach(step => {
+      $('lab-stage-list').append(node('span', step.label, `lab-stage ${step.status}`));
+    });
+    $('lab-metrics').replaceChildren();
+    [[result.documents, 'documentos en el índice'], [result.candidate_chunks, 'fragmentos del archivo'],
+      [result.retrieved, 'fragmentos recuperados']].forEach(([value, label]) => {
+      const metric = node('div');
+      metric.append(node('strong', String(value)), node('span', label));
+      $('lab-metrics').append(metric);
+    });
+    $('lab-fingerprint').textContent = `${result.filename} · ${result.size_bytes} bytes · SHA-256: ${result.sha256}`;
+    const before = labResults.unprotected;
+    const after = labResults.protected;
+    $('lab-match').hidden = !before || !after;
+    if (before && after) $('lab-match').textContent = before.sha256 === after.sha256
+      ? 'Comparación verificada: las etapas 2 y 3 utilizaron exactamente los mismos bytes (SHA-256 idéntico).'
+      : 'Los archivos comparados no coinciden. No se puede acreditar la comparación.';
+    $('lab-question').textContent = `Consulta de recuperación: ${result.question}`;
+    $('lab-context').textContent = result.context;
+    $('lab-sdk-response').value = scan.scan_mode === 'not_scanned'
+      ? 'No se llamó al SDK en esta etapa. No existe respuesta ni veredicto de seguridad.'
+      : JSON.stringify(scan.sdk_response === null ? { error: scan.error } : scan.sdk_response, null, 2);
+    document.querySelectorAll('.lab-card').forEach(card => card.classList.toggle('lab-selected', card.id === `lab-card-${result.scenario}`));
+  }
+  async function executeLab(scenario) {
+    $('lab-progress').textContent = `${labTitles[scenario]}: ejecutando carga, decisión e ingesta…`;
+    const result = await api('/api/rag-demo/run', { scenario });
+    labResults[scenario] = result;
+    const scan = result.scan;
+    let verdict = scan.status === 'not_scanned' ? 'SIN ANALIZAR' : labels[scan.status] || scan.status;
+    if (scan.scan_mode === 'simulation') verdict += ' · SIMULADO';
+    $(`lab-result-${scenario}`).replaceChildren(node('strong', verdict),
+      node('span', `${result.documents} documentos en índice · ${result.retrieved} fragmentos recuperados`));
+    const inspect = document.querySelector(`[data-lab-inspect="${scenario}"]`);
+    inspect.hidden = false;
+    showLabResult(result);
+  }
+  document.querySelectorAll('[data-lab-run]').forEach(button => button.addEventListener('click', async () => {
+    if (busy) return;
+    setBusy(true); showError();
+    try { await executeLab(button.dataset.labRun); $('lab-progress').textContent = 'Etapa completada. Revisa la evidencia o continúa con la siguiente.'; }
+    catch (error) { showError(error.message); $('lab-progress').textContent = 'No se pudo completar esta etapa.'; }
+    finally { setBusy(false); }
+  }));
+  document.querySelectorAll('[data-lab-inspect]').forEach(button => button.addEventListener('click', () => {
+    if (labResults[button.dataset.labInspect]) showLabResult(labResults[button.dataset.labInspect]);
+  }));
+  $('lab-run-all').addEventListener('click', async () => {
+    if (busy) return;
+    setBusy(true); showError();
+    try {
+      for (const scenario of ['normal', 'unprotected', 'protected']) await executeLab(scenario);
+      $('lab-progress').textContent = 'Comparación completada. Usa “Ver evidencia” para explicar cada etapa.';
+    } catch (error) { showError(error.message); $('lab-progress').textContent = 'La comparación no se pudo completar.'; }
     finally { setBusy(false); }
   });
   setBusy(true);

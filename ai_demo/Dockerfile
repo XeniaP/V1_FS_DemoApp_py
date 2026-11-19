@@ -2,7 +2,7 @@ FROM python:3.13-slim
 WORKDIR /app
 COPY ai_demo/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-COPY ai_demo/__init__.py ai_demo/app.py ai_demo/security.py ai_demo/retrieval.py ./ai_demo/
+COPY ai_demo/__init__.py ai_demo/app.py ai_demo/security.py ai_demo/retrieval.py ai_demo/rag_demo.py ai_demo/test_files.py ./ai_demo/
 COPY ai_demo/templates ./ai_demo/templates
 COPY ai_demo/static ./ai_demo/static
 COPY ai_demo/samples ./ai_demo/samples

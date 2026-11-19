@@ -63,9 +63,35 @@ SCAN_MODE=simulation bash run_ai.sh
 
 If `.env` already defines `SCAN_MODE`, change its value there because the launcher sources it after inheriting shell variables. No Vision One credentials or network connection are required in simulation mode. A visible amber banner identifies all results as **synthetic**; the SDK is not called. Ordinary bytes receive a synthetic clean result. The harmless marker `[DEMO_BLOCK]` receives a synthetic detection. This is an intentional test double, not a malware detector. **Live mode never checks that marker:** it always relies on the real SDK.
 
-Use the **Bloqueo simulado** sample to demonstrate that a rejected document does not reach parsing, context, or the index. No actual malware or antivirus test signature is included in the repository.
+Use the **Bloqueo simulado** sample to demonstrate that a rejected document does not reach parsing, context, or the index. Simulation also recognizes the exact built-in EICAR test bytes and returns a clearly synthetic detection. No actual malware is included. The EICAR antivirus test fixture is generated in memory for the guided comparison and optional download.
 
 ## Guided demo
+
+### Three-stage RAG presentation: normal, unprotected, protected
+
+Select **Knowledge / RAG** to open the new **El mismo archivo. Dos caminos.** comparison panel. Click **Ejecutar las 3 etapas** to run the sequence, or execute each stage separately while presenting:
+
+| Stage | Input | Security checkpoint | Observable result |
+| --- | --- | --- | --- |
+| 1. Normal RAG | Fictional travel policy | Real SDK scan in `live` mode | A clean result permits extraction and indexing; retrieval finds the 180 USD hotel limit. |
+| 2. Without protection | Standard 68-byte EICAR antivirus test | Intentionally skipped for this fixed fixture only | The test file is parsed, chunked, and retrieved as context. The comparison index contains the reference policy plus the test file. No SDK verdict is fabricated. |
+| 3. With protection | Exactly the same EICAR bytes | Real SDK scan in `live` mode | A detection prevents extraction and indexing of the test file. Retrieval returns no EICAR chunks; the reference policy remains. |
+
+**Ver evidencia** shows each stage's pipeline, document count, candidate fragment count, retrieved context, query, full SDK response, and file SHA-256. Once stages 2 and 3 have run, the UI verifies that the hashes match. An SDK error is shown as a failed scan, not as a detection. If the service unexpectedly accepts the sample, the UI reports acceptance rather than manufacturing a block.
+
+These are independent, ephemeral experiments. Stages 2 and 3 each start with the same declared, preloaded reference policy fixture (not a fabricated SDK approval). Their candidate indices and retrieved passages exist only in memory. They do **not** change the persistent knowledge base or session activity below the comparison panel. Evidence remains in the browser until refresh. The comparison uses the real extraction, chunking, and TF-IDF retrieval functions, but never calls Ollama, even when a model is configured. It demonstrates a detectable file crossing the ingestion boundary, **not execution of malware, model infection, or a prompt-injection attack**.
+
+In `simulation` mode, the UI explicitly labels the antivirus verdicts as synthetic; no protection claim should be made from that run. In `live` mode, the normal and protected stages call the real SDK. The unprotected stage is labeled **SIN ANÁLISIS** in both modes. The regular `/api/upload` endpoint always scans uploads: the comparison does not introduce a disable-scanning option for arbitrary files.
+
+#### Obtain the test file
+
+Use **Descargar eicar-test.txt** in the panel, or open `http://localhost:8081/api/rag-demo/test-file` while the app is running. It downloads the exact, standard 68-byte [EICAR antivirus test file](https://www.eicar.org/download-anti-malware-testfile/), with SHA-256:
+
+```text
+275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f
+```
+
+EICAR is not real malware. Antivirus products deliberately treat it as a detection, so a local antivirus or browser may block or quarantine the download. The integrated experiment buttons generate and process the same bytes in memory, without needing a file saved on your computer. The application never executes the test file. You can also upload the downloaded `.txt` through the regular protected RAG workflow to see its real scan response.
 
 ### Chat: protect a document before attaching it
 

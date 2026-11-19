@@ -1,5 +1,6 @@
 """Run with: python -m ai_demo.app (separate from the original demo)."""
 from datetime import datetime, timezone
+import io
 import hashlib
 import json
 import logging
@@ -14,6 +15,8 @@ from werkzeug.utils import secure_filename
 
 from .retrieval import answer, chunk_text, extract_text, retrieve, terms
 from .security import scan_bytes
+from .rag_demo import run_scenario, SCENARIOS
+from .test_files import eicar_bytes
 
 MODES = {'chat', 'rag'}
 SAMPLES = Path(__file__).parent / 'samples'
@@ -123,6 +126,21 @@ def create_app(config=None):
         if name not in {'politica-viajes.txt', 'manual-soporte.md', 'prompt-injection.txt', 'simulated-block.txt'}:
             return jsonify(error='Ejemplo no encontrado.'), 404
         return send_file(SAMPLES / name, as_attachment=True, download_name=name)
+
+    @app.get('/api/rag-demo/test-file')
+    def rag_test_file():
+        # A download is optional: integrated experiments keep these bytes in RAM.
+        return send_file(io.BytesIO(eicar_bytes()), mimetype='text/plain',
+                         as_attachment=True, download_name='eicar-test.txt')
+
+    @app.post('/api/rag-demo/run')
+    def rag_demo():
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or not isinstance(data.get('scenario'), str) or data['scenario'] not in SCENARIOS:
+            return jsonify(error='Selecciona una de las tres etapas de la demo RAG.'), 400
+        if set(data) != {'scenario'}:
+            return jsonify(error='Este laboratorio solo admite las muestras integradas, no archivos arbitrarios.'), 400
+        return jsonify(run_scenario(data['scenario'], app.config['SCAN_MODE']))
 
     @app.post('/api/upload')
     def upload():

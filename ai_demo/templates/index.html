@@ -27,6 +27,26 @@
         <div class="hero-tag"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M24 5 40 12v12c0 10-16 19-16 19S8 34 8 24V12L24 5Z"/><path d="m16 24 5 5 11-11"/></svg><span>FILE SECURITY<strong>AI workflows</strong></span></div>
       </section>
       <div id="simulation-banner" class="simulation-banner" hidden><strong>Modo simulación</strong> · Los resultados son sintéticos. No se llama al SDK ni se acredita protección real.</div>
+      <section id="rag-lab" class="card rag-lab" aria-labelledby="rag-lab-title" hidden>
+        <div class="section-heading"><div><p class="eyebrow">ANTES / RIESGO / PROTECCIÓN</p><h2 id="rag-lab-title">El mismo archivo. Dos caminos.</h2></div><button type="button" id="lab-run-all" class="lab-run-all">Ejecutar las 3 etapas</button></div>
+        <p class="description">Primero un RAG normal. Después, una muestra EICAR entra sin análisis. Por último, File Security analiza esa misma muestra antes de la ingesta.</p>
+        <div class="lab-cards">
+          <article class="lab-card" id="lab-card-normal"><span class="lab-number">01 / RAG NORMAL</span><h3>Conocimiento útil.</h3><p>La política de viajes pasa por análisis, extracción e índice. La consulta recupera el límite de hotel.</p><div class="lab-file">politica-viajes.txt</div><div class="lab-result" id="lab-result-normal" role="status">Pendiente de ejecutar</div><button type="button" data-lab-run="normal">Ejecutar etapa 1</button><button type="button" class="lab-inspect" data-lab-inspect="normal" hidden>Ver evidencia</button></article>
+          <article class="lab-card lab-card-risk" id="lab-card-unprotected"><span class="lab-number">02 / SIN PROTECCIÓN</span><h3>El riesgo llega al índice.</h3><p>Se omite el análisis solo para la muestra integrada. El archivo se extrae, se indexa y se recupera como contexto.</p><div class="lab-file">eicar-test.txt · 68 bytes</div><div class="lab-result" id="lab-result-unprotected" role="status">Pendiente de ejecutar</div><button type="button" data-lab-run="unprotected">Ejecutar etapa 2</button><button type="button" class="lab-inspect" data-lab-inspect="unprotected" hidden>Ver evidencia</button></article>
+          <article class="lab-card" id="lab-card-protected"><span class="lab-number">03 / CON FILE SECURITY</span><h3>Detener antes de incorporar.</h3><p>El SDK analiza los mismos bytes. Una detección detiene la extracción y mantiene la muestra fuera del RAG.</p><div class="lab-file">eicar-test.txt · mismo SHA-256</div><div class="lab-result" id="lab-result-protected" role="status">Pendiente de ejecutar</div><button type="button" data-lab-run="protected">Ejecutar etapa 3</button><button type="button" class="lab-inspect" data-lab-inspect="protected" hidden>Ver evidencia</button></article>
+        </div>
+        <p id="lab-progress" class="lab-progress" role="status"></p>
+        <div id="lab-inspector" class="lab-inspector" hidden>
+          <div class="lab-evidence-heading"><h3 id="lab-selected-title">Evidencia de la etapa</h3><span id="lab-scan-badge" class="badge"></span></div>
+          <p id="lab-summary" class="description"></p>
+          <div id="lab-stage-list" class="lab-stage-list" aria-label="Etapas de ingesta"></div>
+          <div id="lab-metrics" class="lab-metrics"></div>
+          <p id="lab-fingerprint" class="lab-fingerprint"></p>
+          <p id="lab-match" class="lab-match" hidden></p>
+          <div class="lab-evidence-grid"><div><h3 id="lab-context-title">Contexto recuperado</h3><p id="lab-question" class="description"></p><pre id="lab-context" tabindex="0" aria-labelledby="lab-context-title"></pre></div><div><label for="lab-sdk-response">Respuesta del SDK</label><textarea id="lab-sdk-response" readonly spellcheck="false"></textarea></div></div>
+        </div>
+        <div class="lab-notes"><p><strong>EICAR es una prueba de antivirus, no malware real.</strong> Estos experimentos usan índices aislados en memoria; no ejecutan archivos, no llaman al LLM y no cambian tu base RAG. Las etapas 2 y 3 parten de la misma política ficticia como documento de referencia preexistente.</p><p><a class="test-download" href="/api/rag-demo/test-file" download="eicar-test.txt">Descargar eicar-test.txt</a> · El antivirus local puede bloquear o poner en cuarentena la descarga. Los botones de la demo funcionan sin guardarla en disco. <a href="https://www.eicar.org/download-anti-malware-testfile/" target="_blank" rel="noopener noreferrer">Referencia EICAR ↗</a></p></div>
+      </section>
       <section class="pipeline" aria-label="Flujo de protección">
         <div class="pipeline-step" data-stage="received"><span>01</span><div>Archivo recibido<small>Entrada no confiable</small></div></div><i aria-hidden="true">→</i>
         <div class="pipeline-step scan-step" data-stage="scanned"><span>02</span><div>File Security<small>Análisis antimalware</small></div></div><i aria-hidden="true">→</i>
